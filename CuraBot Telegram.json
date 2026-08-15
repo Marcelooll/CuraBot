@@ -1,0 +1,1630 @@
+{
+  "name": "CuraBot Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "0018e3e0-462f-4c90-b3cc-1679c32217c9",
+      "name": "Telegram Intake",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        2528
+      ],
+      "webhookId": "1aca5288-e575-46a1-af40-6e962bcb19c3",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const j = $json || {};\nconst msg = j.message || j.channel_post || j.edited_message || {};\nconst chat = msg.chat || {};\nconst chatId = (chat.id !== undefined && chat.id !== null) ? String(chat.id) : '';\n\nlet kind = 'unsupported';\nlet fileKind = '';\nlet fileId = '';\nlet textBody = '';\nlet url = '';\nlet mode = 'csv';\n\nfunction detectMode(s){ s = String(s || '').toLowerCase(); if (/\\/csreview\\b/.test(s)) return 'csreview'; if (/\\/review\\b/.test(s)) return 'review'; if (/\\/csv\\b/.test(s)) return 'csv'; return 'csv'; }\n\nfunction kindFromMeta(mime, name){\n  mime = String(mime || '').toLowerCase();\n  name = String(name || '').toLowerCase();\n  if (mime.includes('pdf') || name.endsWith('.pdf')) return 'pdf';\n  if (mime.includes('csv') || name.endsWith('.csv')) return 'csv';\n  if (mime.includes('spreadsheet') || mime.includes('excel') || mime.includes('ms-excel') || name.endsWith('.xlsx') || name.endsWith('.xls')) return 'xlsx';\n  if (mime.startsWith('text/') || name.endsWith('.txt')) return 'other';\n  return 'other';\n}\n\nif (msg.document) {\n  const d = msg.document || {};\n  fileId = d.file_id || '';\n  fileKind = kindFromMeta(d.mime_type, d.file_name);\n  mode = detectMode(msg.caption);\n  kind = 'document';\n} else if (typeof msg.text === 'string' && msg.text.trim().length) {\n  textBody = msg.text.trim();\n  if (/^\\/(start|help)\\b/i.test(textBody)) {\n    return { json: { chatId, kind: 'start', fileKind, fileId, textBody, url } };\n  }\n  mode = detectMode(textBody);\n  const m = textBody.match(/https?:\\/\\/[^\\s]+/i);\n  if (m) {\n    url = m[0];\n    const schemeMatch = url.match(/^([a-z][a-z0-9+.-]*):/i);\n    const scheme = (schemeMatch ? schemeMatch[1] : '').toLowerCase();\n    const isHttp = scheme === 'http' || scheme === 'https';\n    const authMatch = url.match(/^[a-z][a-z0-9+.-]*:\\/\\/([^\\/?#]*)/i);\n    let host = authMatch ? authMatch[1] : '';\n    host = host.split('@').pop().replace(/:\\d+$/, '').replace(/^\\[|\\]$/g, '').toLowerCase();\n    const isPrivate = !host\n      || host === 'localhost' || host.endsWith('.localhost') || host === '0.0.0.0'\n      || /^127\\./.test(host) || /^10\\./.test(host) || /^192\\.168\\./.test(host)\n      || /^169\\.254\\./.test(host) || /^172\\.(1[6-9]|2[0-9]|3[0-1])\\./.test(host)\n      || host === '::1' || host === 'metadata.google.internal'\n      || host.endsWith('.internal') || host.endsWith('.local');\n    kind = (!isHttp || isPrivate) ? 'blocked' : 'link';\n  } else {\n    kind = 'text';\n  }\n} else if (msg.photo || msg.voice || msg.audio || msg.video || msg.sticker || msg.animation) {\n  kind = 'unsupported';\n}\n\nreturn { json: { chatId, kind, fileKind, fileId, textBody, mode, url } };"
+      },
+      "id": "5000ec74-18c3-4726-84d6-50857b33ec9b",
+      "name": "Parse Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "document",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "link",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "blocked",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "unsupported",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "start",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "eb7fdfbe-97dd-48b3-b9f4-8a77316f79df",
+      "name": "Route by Kind",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        2480
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "⏳ Recebi! Processando seus dados, um instante...",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "6f4438bf-b81b-44d7-a55a-ae0e751b4ef9",
+      "name": "Send Processing",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        1280
+      ],
+      "webhookId": "baa3d7d1-cf65-4f74-aa2d-e8ead7218ed9",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('Parse Message').item.json.fileId }}",
+        "additionalFields": {}
+      },
+      "id": "cb093592-cae1-4a08-bbba-20cbe2966a3e",
+      "name": "Download File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        1456
+      ],
+      "webhookId": "b473ea34-462c-404e-b736-d68275f691cd",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Message').item.json.fileKind }}",
+                    "rightValue": "pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Message').item.json.fileKind }}",
+                    "rightValue": "csv",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Message').item.json.fileKind }}",
+                    "rightValue": "xlsx",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "other"
+        }
+      },
+      "id": "2e0b223f-ed0c-4cbd-82f2-b651bc028e14",
+      "name": "Route by File Kind",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1024,
+        1264
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "joinPages": true
+        }
+      },
+      "id": "a01a8bc8-73b6-4b55-806a-3687abbd018f",
+      "name": "Extract PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        416
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const MAX = 30000;\nlet full = String($json.text || \"\");\nconst total = full.length;\nlet rawText = full;\nlet truncated = false;\nif (total > MAX) { rawText = full.slice(0, MAX); truncated = true; }\nconst used = rawText.length;\nconst coveragePct = total > 0 ? Math.round((used / total) * 100) : 100;\nreturn { json: { rawText, _charsTotal: total, _charsUsed: used, _truncated: truncated, _coveragePct: coveragePct } };"
+      },
+      "id": "433833f6-3eae-4420-a920-1ac63fbdf560",
+      "name": "Normalize (PDF)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        400
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.rawText }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are strictly a Data Cleaning Engineer and BI Analyst. You are NOT a chatbot.\nRead messy, unstructured or semi-structured raw input and return clean, structured\ntabular data ready for BI tools (Power BI, Excel) and finance/commerce systems.\n\nExtract every repeated record/entity (people, customers, products, transactions, events)\nand every metric/number/date/amount. Return an empty \"rows\" array only when the input is\nPURELY prose with no records or figures.\n\nOUTPUT STANDARDS (commercial/banking):\n- Column names: ENGLISH, snake_case, concise, consistent across all rows.\n- Dates: ISO-8601 (YYYY-MM-DD).\n- Numbers: DOT decimal separator, NO thousands separators, NO currency symbols.\n  \"~1.5k\" -> 1500, \"2 mil\" -> 2000, \"12,500\" -> 12500, \"R$ 1.234,56\" -> 1234.56, \"15%\" -> 15.\n- Currency amounts: numeric in its own column + ISO 4217 code in a separate \"currency\" column.\n- Take the LOWER bound of any range.\nEvery object in \"rows\" MUST share the EXACT same keys; use null for missing values.\nOutput MUST be a single JSON object. NO markdown, NO commentary. DATA ONLY."
+        }
+      },
+      "id": "9a3af199-b225-4f9e-a17a-eae67eed2de2",
+      "name": "Data Polishing AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2048,
+        224
+      ],
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "25e53a1c-192f-42bb-bf92-2b000d1ff5ef",
+      "name": "Gemini Model (Cleaner)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2064,
+        448
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KZAyXpitMyO31dHo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"rows\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":true}}},\"required\":[\"rows\"]}",
+        "autoFix": true
+      },
+      "id": "1585f87f-89d9-4a46-acbe-7b1ec4cee88f",
+      "name": "Tabular Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2192,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "93fcd137-c79d-4645-a705-3993d4d22b1c",
+      "name": "Gemini Model (Parser Fix)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2192,
+        656
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KZAyXpitMyO31dHo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet rows = [];\nfor (const it of items) {\n  const out = it.json.output ?? it.json;\n  if (Array.isArray(out)) rows = rows.concat(out);\n  else if (out && Array.isArray(out.rows)) rows = rows.concat(out.rows);\n  else if (out && typeof out === \"object\") rows.push(out);\n}\nrows = rows.filter((r) => r && typeof r === \"object\" && !Array.isArray(r) && !(\"__empty\" in r));\nif (rows.length === 0) { return [{ json: { __empty: true } }]; }\nconst seen = new Set(); const columns = [];\nfor (const r of rows) { for (const k of Object.keys(r)) { if (!seen.has(k)) { seen.add(k); columns.push(k); } } }\nconst normalized = rows.map((r) => {\n  const clean = {};\n  for (const col of columns) {\n    let v = r[col];\n    if (v === undefined || v === \"\" || v === \"N/A\" || v === \"null\") v = null;\n    if (typeof v === \"object\" && v !== null) v = JSON.stringify(v);\n    clean[col] = v;\n  }\n  return clean;\n});\nreturn normalized.map((json) => ({ json }));"
+      },
+      "id": "28df3bbf-77ff-4ef9-ad4f-f90fb1c2876d",
+      "name": "Validate & Structure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        144
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "empty",
+              "leftValue": "={{ $json.__empty }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4fe3bcb2-c0ff-4945-adc6-e461a690cfb7",
+      "name": "Has Rows?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2624,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "No structured or tabular data was found. Send a document, spreadsheet, or link that contains records, metrics, or figures.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "6c9b9653-74ef-488f-83b1-4f1156815b8e",
+      "name": "Send No Data",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2848,
+        0
+      ],
+      "webhookId": "ed2efc15-ee0a-49d9-9bac-2675f63a07ba",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Message').first().json.mode }}",
+                    "rightValue": "csv",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Message').first().json.mode }}",
+                    "rightValue": "review",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Message').first().json.mode }}",
+                    "rightValue": "csreview",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "465f2b43-cf55-4e5e-9ad6-03d062789e6e",
+      "name": "Route by Mode",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2848,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "fileName": "curabot_clean.csv",
+          "headerRow": true
+        }
+      },
+      "id": "14f4e9b6-0709-442e-95ed-cea82a2d90a3",
+      "name": "Generate CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2848,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let cov = null, trunc = false;\nfor (const n of [\"Normalize (Link)\", \"Normalize (PDF)\", \"Normalize (Text File)\"]) {\n  try { const j = $(n).first().json; if (j && j._coveragePct !== undefined) { cov = j._coveragePct; trunc = !!j._truncated; break; } } catch (e) {}\n}\nlet caption = \"CuraBot: seu CSV limpo está pronto.\";\nif (trunc && cov !== null) { caption += \"\\n\\n⚠️ Transparência: processei apenas \" + cov + \"% do conteúdo (arquivo/página muito grande, cortado em 30.000 caracteres para caber no limite de tokens).\"; }\nreturn [{ json: { _caption: caption }, binary: $input.first().binary }];"
+      },
+      "id": "96b458c8-929a-4afd-b306-f57bc96a31d7",
+      "name": "Build Caption",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        64
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "binaryData": true,
+        "additionalFields": {
+          "caption": "={{ $json._caption }}",
+          "fileName": "curabot_clean.csv",
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "968d09b8-6e42-4116-9a0f-87d9913b4c15",
+      "name": "Send CSV",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3072,
+        192
+      ],
+      "webhookId": "67dd3841-ebcb-4315-ad40-55209bcd6615",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map((i) => i.json);\nconst preview = JSON.stringify(rows).slice(0, 12000);\nreturn [{ json: { reviewInput: \"Dataset with \" + rows.length + \" records. Data (JSON):\\n\" + preview } }];"
+      },
+      "id": "b40f9b4f-dbc4-49f9-9c95-9a5adcf1f5d6",
+      "name": "Aggregate for Review",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3072,
+        352
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.reviewInput }}",
+        "options": {
+          "systemMessage": "You are CuraBot's data analyst. You receive a cleaned dataset as JSON.\nWrite a spoken-style, easy-to-read REVIEW of the data for someone who has no time to read the whole database.\nCover: what the dataset is about, how many records, the key columns, notable figures/totals/averages, clear trends, and any outliers or data-quality issues.\nBe concise (fits a Telegram message), use short paragraphs and simple bullet points. NO markdown tables, NO code blocks.\nWrite in Brazilian Portuguese, unless the data is clearly in another language (then use that language).\nReturn ONLY the review text."
+        }
+      },
+      "id": "236bad40-53fa-4dea-91d9-6b8692139516",
+      "name": "Review AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3296,
+        352
+      ],
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "id": "a811d642-3aae-44fe-b5ad-fffdaa35fa85",
+      "name": "Gemini Model (Review)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        3376,
+        576
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KZAyXpitMyO31dHo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "48338ce4-0c6d-4bd8-b5b9-167329fd889a",
+      "name": "Send Review",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3648,
+        352
+      ],
+      "webhookId": "b4dceadc-1b15-4205-8371-cf8341d189ea",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "CuraBot could not process this input. The file/link may be unreachable or corrupted, or no structured data was found.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "781822b4-803b-4813-8785-2aaf334b589a",
+      "name": "Send Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2624,
+        1232
+      ],
+      "webhookId": "946abdcc-c76a-4362-91e3-e45776def08b",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "b9024ed0-0b2e-4a6c-89e9-e048b0a5d693",
+      "name": "Extract CSV",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1248,
+        1120
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map((i) => i.json);\nconst seen = {};\nconst columns = [];\nfor (const r of rows) { for (const k of Object.keys(r || {})) { if (!seen[k]) { seen[k] = true; columns.push(k); } } }\nreturn [{ json: { columnsText: columns.join(\", \"), rowCount: rows.length, columns, rowsJson: rows } }];"
+      },
+      "id": "80f64708-e2da-489c-b9de-ef7474250567",
+      "name": "Collect Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        1104
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.columnsText }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You map messy tabular COLUMN NAMES to a clean BI/commerce schema.\nYou receive ONLY a comma-separated list of source column names (NO data rows).\nFor EACH source column output an object with:\n- source: the exact original column name.\n- target: an English, snake_case, concise column name\n  (e.g. produto -> product_name, vendas -> amount, data -> transaction_date).\n- type: one of \"string\", \"integer\", \"number\", \"currency\", \"date\".\nReturn EVERY source column exactly once.\nOutput JSON ONLY: {\"mappings\":[{\"source\":\"...\",\"target\":\"...\",\"type\":\"...\"}]}. No commentary."
+        }
+      },
+      "id": "45d87636-53cd-471c-a94a-af0fe3d6aa5e",
+      "name": "Header Mapping AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1696,
+        976
+      ],
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "id": "b343a240-2775-4d20-b018-64297e1872c8",
+      "name": "Gemini Model (Header)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1712,
+        1200
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KZAyXpitMyO31dHo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"mappings\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"source\":{\"type\":\"string\"},\"target\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"}},\"required\":[\"source\",\"target\",\"type\"]}}},\"required\":[\"mappings\"]}"
+      },
+      "id": "d029361a-ac1d-425d-890d-e79bee92d600",
+      "name": "Header Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1840,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $(\"Collect Rows\").first().json;\nconst rows = Array.isArray(src.rowsJson) ? src.rowsJson : [];\nconst inFirst = $input.first() && $input.first().json ? $input.first().json : {};\nconst aiOut = inFirst.output !== undefined ? inFirst.output : inFirst;\nconst mappings = (aiOut && Array.isArray(aiOut.mappings)) ? aiOut.mappings : [];\nconst map = {};\nfor (const m of mappings) { if (m && m.source) map[String(m.source)] = m; }\nfunction snake(k){ return String(k || \"\").trim().toLowerCase().replace(/[^a-z0-9]+/g, \"_\").replace(/^_+|_+$/g, \"\") || \"column\"; }\nfunction detectMult(s){ s = String(s).toLowerCase(); if (/(milh|\\bmi\\b|\\bmm\\b)/.test(s)) return 1000000; if (/\\bmil\\b/.test(s) || /[0-9]\\s*k\\b/.test(s)) return 1000; return 1; }\nfunction toNumber(v, integer){\n  if (v === null || v === undefined || v === \"\") return null;\n  let s = String(v).trim().toLowerCase();\n  const mult = detectMult(s);\n  s = s.split(/\\s*(?:-|–|—|to|a|ate|até)\\s*/)[0];\n  s = s.replace(/[^0-9.,-]/g, \"\");\n  if (s === \"\" || s === \"-\") return null;\n  const lastComma = s.lastIndexOf(\",\"); const lastDot = s.lastIndexOf(\".\");\n  if (lastComma > -1 && lastDot > -1) { if (lastComma > lastDot) { s = s.replace(/\\./g, \"\").replace(/,/g, \".\"); } else { s = s.replace(/,/g, \"\"); } }\n  else if (lastComma > -1) { const after = s.length - lastComma - 1; if (after === 3) s = s.replace(/,/g, \"\"); else s = s.replace(/,/g, \".\"); }\n  else { const dots = (s.match(/\\./g) || []).length; if (dots > 1) { s = s.replace(/\\./g, \"\"); } else if (dots === 1) { const afterDot = s.length - s.lastIndexOf(\".\") - 1; if (afterDot === 3) s = s.replace(/\\./g, \"\"); } }\n  let n = parseFloat(s); if (isNaN(n)) return null; n = n * mult; return integer ? Math.round(n) : n;\n}\nfunction currencyCode(v){ const s = String(v); if (/r\\$|brl|reais/i.test(s)) return \"BRL\"; if (/us\\$|usd|\\$/i.test(s)) return \"USD\"; if (/eur|€/i.test(s)) return \"EUR\"; if (/gbp|£/i.test(s)) return \"GBP\"; return null; }\nfunction toISODate(v){\n  if (v === null || v === undefined || v === \"\") return null;\n  const s = String(v).trim();\n  let m = s.match(/^(\\d{4})-(\\d{2})-(\\d{2})/); if (m) return m[1] + \"-\" + m[2] + \"-\" + m[3];\n  m = s.match(/^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{2,4})$/);\n  if (m) { let d = (\"0\" + m[1]).slice(-2); let mo = (\"0\" + m[2]).slice(-2); let y = m[3]; if (y.length === 2) y = \"20\" + y; return y + \"-\" + mo + \"-\" + d; }\n  const t = Date.parse(s); if (!isNaN(t)) return new Date(t).toISOString().slice(0, 10); return s;\n}\nfunction looksDate(v){ const s = String(v); return /^\\d{4}-\\d{2}-\\d{2}/.test(s) || /^\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4}$/.test(s); }\nfunction looksNumeric(v){ const s = String(v).replace(/\\s/g, \"\"); if (!/[0-9]/.test(s)) return false; return s.replace(/[0-9.,%+\\-–—kmil$r€£]/gi, \"\").length === 0; }\nconst out = rows.map((r) => {\n  const clean = {};\n  for (const key of Object.keys(r || {})) {\n    const val = r[key]; const m = map[key] || {};\n    const target = m.target ? snake(m.target) : snake(key);\n    let type = m.type || \"auto\";\n    if (type === \"auto\") { if (looksDate(val)) type = \"date\"; else if (looksNumeric(val)) type = \"number\"; else type = \"string\"; }\n    if (type === \"currency\") { clean[target] = toNumber(val, false); clean[target + \"_currency\"] = currencyCode(val); }\n    else if (type === \"integer\") { clean[target] = toNumber(val, true); }\n    else if (type === \"number\") { clean[target] = toNumber(val, false); }\n    else if (type === \"date\") { clean[target] = toISODate(val); }\n    else { clean[target] = (val === \"\" || val === null || val === undefined) ? null : String(val).trim(); }\n  }\n  return clean;\n});\nif (out.length === 0) return [{ json: { __empty: true } }];\nreturn out.map((json) => ({ json }));"
+      },
+      "id": "4444a728-b43a-4404-b869-62a9f1bf4e98",
+      "name": "Apply Mapping",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        912
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "headerRow": true
+        }
+      },
+      "id": "739e7e68-bbbd-4675-b5a3-179eb61bf1ec",
+      "name": "Extract Excel",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1248,
+        1520
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "destinationKey": "text",
+        "options": {}
+      },
+      "id": "84281cc0-7e57-402f-99c8-961d7f6698c6",
+      "name": "Extract Text File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        1808
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const MAX = 30000;\nlet full = String($json.text || \"\");\nconst total = full.length;\nlet rawText = full;\nlet truncated = false;\nif (total > MAX) { rawText = full.slice(0, MAX); truncated = true; }\nconst used = rawText.length;\nconst coveragePct = total > 0 ? Math.round((used / total) * 100) : 100;\nreturn { json: { rawText, _charsTotal: total, _charsUsed: used, _truncated: truncated, _coveragePct: coveragePct } };"
+      },
+      "id": "6d9d308a-6aad-4086-b9e1-64520a1a97c4",
+      "name": "Normalize (Text File)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        1728
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "id": "76467406-e267-498c-af3a-d327cae4f66f",
+      "name": "Fetch URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1472,
+        2256
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let html = String($json.data || \"\");\nhtml = html.replace(/<script[\\s\\S]*?<\\/script>/gi, \" \").replace(/<style[\\s\\S]*?<\\/style>/gi, \" \").replace(/<[^>]+>/g, \" \");\nhtml = html.replace(/&nbsp;/g, \" \").replace(/&amp;/g, \"&\").replace(/&lt;/g, \"<\").replace(/&gt;/g, \">\").replace(/&quot;/g, '\"').replace(/\\s+/g, \" \").trim();\nconst MAX = 30000;\nconst total = html.length;\nlet rawText = html;\nlet truncated = false;\nif (total > MAX) { rawText = html.slice(0, MAX); truncated = true; }\nconst used = rawText.length;\nconst coveragePct = total > 0 ? Math.round((used / total) * 100) : 100;\nreturn { json: { rawText, _charsTotal: total, _charsUsed: used, _truncated: truncated, _coveragePct: coveragePct } };"
+      },
+      "id": "c9d0eb65-3e7e-4fef-9c0b-d8916efda063",
+      "name": "Normalize (Link)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        2192
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.textBody }}",
+        "options": {
+          "systemMessage": "You are CuraBot, a friendly data-curation assistant.\nThe user sent a plain text chat message, not data to process.\nDetect the language of the message and reply IN THAT SAME LANGUAGE, warmly and briefly.\nExplain that CuraBot curates DATA and does not process plain chat messages.\nList what it accepts: PDF, CSV, Excel (xlsx/xls) and other documents, plus web links (URLs).\nIt cleans and structures them into a CSV ready for BI tools. Invite them to send one.\nReturn ONLY the reply text, no JSON, no markdown, no quotes."
+        }
+      },
+      "id": "4ccc02f3-c920-4927-8be1-53a3988ffc51",
+      "name": "Polite Responder AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        2400
+      ],
+      "retryOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "id": "35874adc-1098-4a0c-a02f-49fa78c134fc",
+      "name": "Gemini Model (Responder)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        2624
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KZAyXpitMyO31dHo",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "a916c878-3ebc-4bff-8e00-b196df464764",
+      "name": "Send Polite",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1024,
+        2512
+      ],
+      "webhookId": "d434a5c0-b7ad-4cb8-83b3-825c4d0aab9a",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "That URL is not allowed. Only public http(s) links are accepted; internal, localhost, cloud-metadata and non-web addresses are blocked for security.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "4db3cba4-9647-46cd-af02-bb0f012ddde2",
+      "name": "Send Blocked",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        2800
+      ],
+      "webhookId": "10676e88-d8ad-416a-a3df-7b1c366d62e9",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "CuraBot only processes documents (PDF, CSV, Excel, text) and web links. Images, audio and video are not supported yet.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "91336699-69c0-4b53-8ba7-7ddf52476f3b",
+      "name": "Send Unsupported",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        2992
+      ],
+      "webhookId": "e05ad4f1-dba1-45e5-b841-65157ed5d6d1",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parse Message').item.json.chatId }}",
+        "text": "👋 Olá! Eu sou o CuraBot, seu assistente de curadoria de dados.\n\nEu transformo dados bagunçados em um CSV limpo e pronto para BI (Power BI, Excel), seguindo padrões de comércio/banco: colunas em inglês (snake_case), datas ISO-8601 e códigos de moeda ISO 4217.\n\nO que você pode me enviar:\n• 📄 Documentos: PDF, CSV, Excel (xlsx/xls) e arquivos de texto\n• 🔗 Links (URLs) públicos com dados\nEu extraio, limpo e devolvo um CSV organizado.\n\nO que NÃO faço:\n• Não converso por mensagens de texto comuns (mas respondo educadamente e no seu idioma).\n• Não processo imagens, áudio ou vídeo.\n• Bloqueio links internos/inseguros por segurança.\n\nModos (envie o comando junto do arquivo/link — como legenda do arquivo ou na mesma mensagem do link):\n• /csv → só o CSV limpo (padrão)\n• /review → um resumo falado dos dados, para quem não quer ler o banco inteiro\n• /csreview → os dois: CSV + resumo\n\nÉ só mandar um arquivo ou link para começar! 🚀",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "={{ \"\" }}"
+        }
+      },
+      "id": "29131f2e-c18c-47f7-ae95-fa0e7523c18d",
+      "name": "Send Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        3184
+      ],
+      "webhookId": "dd2c0fe5-f1f2-426d-b060-882e7b1c1476",
+      "credentials": {
+        "telegramApi": {
+          "id": "dnYbclxsGi1BHyF1",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Intake": {
+      "main": [
+        [
+          {
+            "node": "Parse Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Message": {
+      "main": [
+        [
+          {
+            "node": "Route by Kind",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Kind": {
+      "main": [
+        [
+          {
+            "node": "Send Processing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Processing",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Polite Responder AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Blocked",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Unsupported",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Route by File Kind",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by File Kind": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Excel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Text File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF": {
+      "main": [
+        [
+          {
+            "node": "Normalize (PDF)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize (PDF)": {
+      "main": [
+        [
+          {
+            "node": "Data Polishing AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Polishing AI": {
+      "main": [
+        [
+          {
+            "node": "Validate & Structure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model (Cleaner)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Data Polishing AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tabular Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Data Polishing AI",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model (Parser Fix)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Tabular Schema",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Structure": {
+      "main": [
+        [
+          {
+            "node": "Has Rows?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Rows?": {
+      "main": [
+        [
+          {
+            "node": "Send No Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Mode": {
+      "main": [
+        [
+          {
+            "node": "Generate CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate for Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate CSV",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Aggregate for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate CSV": {
+      "main": [
+        [
+          {
+            "node": "Build Caption",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Caption": {
+      "main": [
+        [
+          {
+            "node": "Send CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate for Review": {
+      "main": [
+        [
+          {
+            "node": "Review AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review AI": {
+      "main": [
+        [
+          {
+            "node": "Send Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model (Review)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Review AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract CSV": {
+      "main": [
+        [
+          {
+            "node": "Collect Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Rows": {
+      "main": [
+        [
+          {
+            "node": "Header Mapping AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Header Mapping AI": {
+      "main": [
+        [
+          {
+            "node": "Apply Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model (Header)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Header Mapping AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Header Schema": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Header Mapping AI",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Mapping": {
+      "main": [
+        [
+          {
+            "node": "Validate & Structure",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Excel": {
+      "main": [
+        [
+          {
+            "node": "Collect Rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text File": {
+      "main": [
+        [
+          {
+            "node": "Normalize (Text File)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize (Text File)": {
+      "main": [
+        [
+          {
+            "node": "Data Polishing AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch URL": {
+      "main": [
+        [
+          {
+            "node": "Normalize (Link)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize (Link)": {
+      "main": [
+        [
+          {
+            "node": "Data Polishing AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Polite Responder AI": {
+      "main": [
+        [
+          {
+            "node": "Send Polite",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Model (Responder)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Polite Responder AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "85a3e944-f216-458e-a28c-1232d62bd1ed",
+  "meta": {
+    "instanceId": "8b5c1cef946e1164932c52936c81acf0993a7614f5f1f3a61c47f0838567904e"
+  },
+  "nodeGroups": [],
+  "id": "dZfTC6TPqTIh3ccm",
+  "tags": []
+}
