@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!requirements.txt
+!curabot.py
+!runtime.py
+!engine.py

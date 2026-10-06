@@ -1,0 +1,20 @@
+services:
+  curabot:
+    build: .
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 60s
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Configure o token no .env do servidor}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ALLOWED_USER_IDS: ${ALLOWED_USER_IDS:-}
+      CURABOT_STATE_DIR: /data
+    volumes:
+      - curabot_data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  curabot_data:
