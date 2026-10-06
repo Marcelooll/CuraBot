@@ -5,6 +5,6 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt \
     && useradd --create-home --uid 10001 curabot \
     && mkdir /data && chown curabot:curabot /data
-COPY curabot.py runtime.py engine.py ./
+COPY src/ ./
 USER curabot
 CMD ["python", "-u", "curabot.py"]

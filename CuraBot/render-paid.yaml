@@ -6,7 +6,7 @@ services:
     plan: 0.5c-512mb
     numInstances: 1
     buildCommand: pip install -r requirements.txt
-    startCommand: python -u curabot.py
+    startCommand: env PYTHONPATH=src python -u src/curabot.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.11

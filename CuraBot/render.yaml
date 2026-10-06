@@ -5,7 +5,7 @@ services:
     plan: free
     numInstances: 1
     buildCommand: pip install -r requirements-cloud.txt
-    startCommand: gunicorn --workers 1 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT 'webapp:create_app()'
+    startCommand: gunicorn --chdir src --workers 1 --threads 2 --timeout 120 --bind 0.0.0.0:$PORT 'webapp:create_app()'
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
